@@ -33,24 +33,41 @@ class SQLObject
   end
 
   def self.all
-    # ...
+    all_obj = DBConnection.execute("SELECT * FROM #{self.table_name}")
+    self.parse_all(all_obj)
   end
 
   def self.parse_all(results)
-    # ...
+    parsed = results.map do |params|
+      parsed_params = params.to_a
+      parsed_params.map { |pair| [pair[0].to_sym, pair[-1]] }
+    end
+    final_results = parsed.map(&:to_h)
+    final_results.map do |params|
+      self.new(params)
+    end
   end
 
   def self.find(id)
-    # ...
+    results = DBConnection.execute(<<-SQL)
+      SELECT
+        #{self.table_name}.*
+      FROM
+        #{self.table_name}
+      WHERE
+       #{self.table_name}.id = #{id}
+    SQL
+    self.parse_all(results).first
   end
 
   def initialize(params = {})
-    unless params.keys.all? { |param| self.class.columns.include?(param) }
-      bad_param = params.keys.find { |param| !self.class.columns.include?(param) }
+    your_class = self.class
+    unless params.keys.all? { |param| your_class.columns.include?(param) }
+      bad_param = params.keys.find { |param| !your_class.columns.include?(param) }
       raise "unknown attribute '#{bad_param.to_s}'"
     else
       characteristics = params.keys
-      self.class.columns.each do |column|
+      your_class.columns.each do |column|
         if characteristics.include?(column)
           self.send("#{column}=", params[column])
         end
@@ -63,11 +80,12 @@ class SQLObject
   end
 
   def attribute_values
-    # ...
+    @attributes.values
   end
 
   def insert
-    # ...
+    col_names = self.class.columns
+    question_marks = ["?"] * @attributes.legnth
   end
 
   def update
