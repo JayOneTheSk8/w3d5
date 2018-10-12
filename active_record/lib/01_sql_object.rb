@@ -13,6 +13,15 @@ class SQLObject
   end
 
   def self.finalize!
+    self.columns.each do |column|
+      define_method(column) do
+        self.attributes[column]
+      end
+
+      define_method("#{column.to_s}=") do |val|
+        self.attributes[column] = val
+      end
+    end
   end
 
   def self.table_name=(table_name)
@@ -36,11 +45,21 @@ class SQLObject
   end
 
   def initialize(params = {})
-    # ...
+    unless params.keys.all? { |param| self.class.columns.include?(param) }
+      bad_param = params.keys.find { |param| !self.class.columns.include?(param) }
+      raise "unknown attribute '#{bad_param.to_s}'"
+    else
+      characteristics = params.keys
+      self.class.columns.each do |column|
+        if characteristics.include?(column)
+          self.send("#{column}=", params[column])
+        end
+      end
+    end
   end
 
   def attributes
-    
+    @attributes ||= {}
   end
 
   def attribute_values
