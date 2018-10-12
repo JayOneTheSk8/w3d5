@@ -80,12 +80,20 @@ class SQLObject
   end
 
   def attribute_values
-    @attributes.values
+    attributes.values
   end
 
   def insert
-    col_names = self.class.columns
-    question_marks = ["?"] * @attributes.legnth
+    question_marks = (["?"] * @attributes.length).join(", ")
+    col_names = self.class.columns.select { |symbol| attributes.keys.include?(symbol) }
+    col_names = col_names.map(&:to_s).join(", ")
+    DBConnection.execute(<<-SQL, *attribute_values)
+      INSERT INTO
+        #{self.class.table_name} (#{col_names})
+      VALUES
+        (#{question_marks})
+    SQL
+    self.id = DBConnection.last_insert_row_id
   end
 
   def update
